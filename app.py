@@ -1,168 +1,124 @@
 import streamlit as st
 import requests
-import json
 import time
-import base64
 from PIL import Image
 import io
-import pandas as pd
-from datetime import datetime
 import re
 
-# Configuración ultra minimalista
+# Configuración
 st.set_page_config(
-    page_title="AI Invoice Reader • Perú",
+    page_title="Lector de Facturas Perú",
     page_icon="🇵🇪",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    layout="centered"
 )
 
-# CSS moderno y minimalista
+# CSS super limpio - fondo blanco
 st.markdown("""
 <style>
-    .main > div {
-        padding-top: 2rem;
+    .main {
+        background-color: white;
+        color: #333333;
     }
     
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-color: white;
     }
     
-    .main-container {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 20px;
-        padding: 2rem;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        margin: 1rem 0;
-    }
-    
-    .upload-zone {
-        border: 2px dashed #e0e0e0;
-        border-radius: 15px;
-        padding: 3rem 2rem;
+    .header {
         text-align: center;
-        background: #fafafa;
-        transition: all 0.3s ease;
+        padding: 2rem 0;
+        border-bottom: 1px solid #e0e0e0;
+        margin-bottom: 2rem;
     }
     
-    .upload-zone:hover {
-        border-color: #667eea;
-        background: #f0f4ff;
-    }
-    
-    .result-card {
-        background: white;
-        border-radius: 15px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-        margin: 1rem 0;
-        border-left: 4px solid #667eea;
-    }
-    
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 12px;
-        padding: 1rem;
-        text-align: center;
-        margin: 0.5rem 0;
-    }
-    
-    .metric-value {
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 0.2rem;
-    }
-    
-    .metric-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-    
-    .header-title {
+    .title {
         font-size: 2.5rem;
-        font-weight: 300;
-        text-align: center;
         color: #2c3e50;
         margin-bottom: 0.5rem;
     }
     
-    .header-subtitle {
-        text-align: center;
+    .subtitle {
         color: #7f8c8d;
-        margin-bottom: 2rem;
         font-size: 1.1rem;
     }
     
-    .success-badge {
-        background: #27ae60;
-        color: white;
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        display: inline-block;
-        margin-bottom: 1rem;
+    .result-box {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        background-color: #f9f9f9;
     }
     
-    .document-type {
-        background: #3498db;
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
+    .metric {
+        background-color: #f1f1f1;
+        border-radius: 6px;
+        padding: 0.8rem;
+        margin: 0.5rem 0;
+        text-align: center;
+    }
+    
+    .metric-value {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .metric-label {
+        color: #7f8c8d;
         font-size: 0.9rem;
-        display: inline-block;
-        margin-bottom: 1rem;
     }
     
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 0.7rem 2rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        width: 100%;
+    .success {
+        background-color: #d4edda;
+        color: #155724;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        border: 1px solid #c3e6cb;
+        margin: 1rem 0;
     }
     
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        border: 1px solid #f5c6cb;
+        margin: 1rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Configuración Azure
+# Credenciales Azure
 FORM_RECOGNIZER_ENDPOINT = st.secrets.get("FORM_RECOGNIZER_ENDPOINT", "")
 FORM_RECOGNIZER_KEY = st.secrets.get("FORM_RECOGNIZER_KEY", "")
 COMPUTER_VISION_ENDPOINT = st.secrets.get("COMPUTER_VISION_ENDPOINT", "")
 COMPUTER_VISION_KEY = st.secrets.get("COMPUTER_VISION_KEY", "")
 
-class PeruInvoiceReader:
+class InvoiceReader:
     def __init__(self):
-        self.form_recognizer_endpoint = FORM_RECOGNIZER_ENDPOINT.rstrip('/')
-        self.form_recognizer_key = FORM_RECOGNIZER_KEY
-        self.computer_vision_endpoint = COMPUTER_VISION_ENDPOINT.rstrip('/')
-        self.computer_vision_key = COMPUTER_VISION_KEY
+        self.form_endpoint = FORM_RECOGNIZER_ENDPOINT.rstrip('/')
+        self.form_key = FORM_RECOGNIZER_KEY
+        self.vision_endpoint = COMPUTER_VISION_ENDPOINT.rstrip('/')
+        self.vision_key = COMPUTER_VISION_KEY
     
     def analyze_with_form_recognizer(self, image_bytes):
-        """Analizar documento con Form Recognizer - SIMPLIFICADO"""
+        """Analizar con Form Recognizer"""
         try:
-            url = f"{self.form_recognizer_endpoint}/formrecognizer/documentModels/prebuilt-invoice:analyze?api-version=2023-07-31"
+            url = f"{self.form_endpoint}/formrecognizer/documentModels/prebuilt-invoice:analyze?api-version=2023-07-31"
             
             headers = {
-                'Ocp-Apim-Subscription-Key': self.form_recognizer_key,
+                'Ocp-Apim-Subscription-Key': self.form_key,
                 'Content-Type': 'application/octet-stream'
             }
             
-            response = requests.post(url, headers=headers, data=image_bytes)
+            response = requests.post(url, headers=headers, data=image_bytes, timeout=30)
             
             if response.status_code == 202:
                 operation_url = response.headers.get('Operation-Location')
-                return self._wait_for_result(operation_url, self.form_recognizer_key)
+                return self._wait_for_result(operation_url, self.form_key)
             else:
-                st.error(f"Form Recognizer Error: {response.status_code}")
+                st.error(f"Error Form Recognizer: {response.status_code}")
                 return None
                 
         except Exception as e:
@@ -170,22 +126,22 @@ class PeruInvoiceReader:
             return None
     
     def analyze_with_computer_vision(self, image_bytes):
-        """Analizar con Computer Vision OCR - SIMPLIFICADO"""
+        """Analizar con Computer Vision"""
         try:
-            url = f"{self.computer_vision_endpoint}/vision/v3.2/read/analyze"
+            url = f"{self.vision_endpoint}/vision/v3.2/read/analyze"
             
             headers = {
-                'Ocp-Apim-Subscription-Key': self.computer_vision_key,
+                'Ocp-Apim-Subscription-Key': self.vision_key,
                 'Content-Type': 'application/octet-stream'
             }
             
-            response = requests.post(url, headers=headers, data=image_bytes)
+            response = requests.post(url, headers=headers, data=image_bytes, timeout=30)
             
             if response.status_code == 202:
                 operation_url = response.headers.get('Operation-Location')
-                return self._wait_for_result(operation_url, self.computer_vision_key)
+                return self._wait_for_result(operation_url, self.vision_key)
             else:
-                st.error(f"Computer Vision Error: {response.status_code}")
+                st.error(f"Error Computer Vision: {response.status_code}")
                 return None
                 
         except Exception as e:
@@ -193,43 +149,52 @@ class PeruInvoiceReader:
             return None
     
     def _wait_for_result(self, operation_url, api_key):
-        """Esperar resultado - SIMPLIFICADO"""
+        """Esperar resultado"""
         headers = {'Ocp-Apim-Subscription-Key': api_key}
         
-        for i in range(20):  # Máximo 20 intentos
+        progress = st.progress(0)
+        status_text = st.empty()
+        
+        for i in range(30):
             try:
-                response = requests.get(operation_url, headers=headers)
+                response = requests.get(operation_url, headers=headers, timeout=10)
                 result = response.json()
                 
                 status = result.get('status', '')
+                progress.progress((i + 1) / 30)
+                status_text.text(f"Procesando... {status}")
                 
                 if status == 'succeeded':
+                    progress.progress(1.0)
+                    status_text.text("✅ Completado")
                     return result
                 elif status == 'failed':
-                    st.error("Análisis falló")
+                    st.error("❌ Procesamiento falló")
                     return None
                 
-                time.sleep(1)  # Esperar 1 segundo
+                time.sleep(1)
                 
-            except:
+            except Exception as e:
                 time.sleep(1)
                 continue
         
-        st.error("Timeout en análisis")
+        st.error("⏱️ Tiempo agotado")
         return None
     
     def extract_data(self, form_result, ocr_result):
-        """Extraer datos - SIMPLIFICADO"""
+        """Extraer datos importantes"""
         data = {
-            'document_type': 'Documento',
+            'tipo_documento': 'Documento',
             'ruc': '',
-            'business_name': '',
-            'invoice_number': '',
+            'razon_social': '',
+            'numero_documento': '',
+            'fecha': '',
             'total': '',
-            'date': ''
+            'subtotal': '',
+            'igv': ''
         }
         
-        # Obtener texto completo del OCR
+        # Extraer texto completo del OCR
         full_text = ""
         if ocr_result and 'analyzeResult' in ocr_result:
             pages = ocr_result['analyzeResult'].get('readResults', [])
@@ -240,176 +205,210 @@ class PeruInvoiceReader:
         # Detectar tipo de documento
         text_upper = full_text.upper()
         if 'BOLETA' in text_upper:
-            data['document_type'] = 'Boleta de Venta'
+            data['tipo_documento'] = 'Boleta de Venta'
         elif 'FACTURA' in text_upper:
-            data['document_type'] = 'Factura'
+            data['tipo_documento'] = 'Factura'
         
-        # Extraer RUC
-        ruc_match = re.search(r'RUC[:\s]*(\d{11})', full_text, re.IGNORECASE)
+        # Extraer RUC (formato peruano: 11 dígitos)
+        ruc_pattern = r'RUC[:\s]*(\d{11})'
+        ruc_match = re.search(ruc_pattern, full_text, re.IGNORECASE)
         if ruc_match:
             data['ruc'] = ruc_match.group(1)
         
-        # Extraer número de documento
-        doc_match = re.search(r'(\w\d{2}-\d{8})', full_text)
-        if doc_match:
-            data['invoice_number'] = doc_match.group(1)
+        # Extraer número de documento (formato: F001-00000001)
+        doc_patterns = [
+            r'(\w\d{2,3}-\d{6,8})',
+            r'(?:N°|NUM)[:\s]*(\w\d{2,3}-\d{6,8})'
+        ]
+        for pattern in doc_patterns:
+            match = re.search(pattern, full_text, re.IGNORECASE)
+            if match:
+                data['numero_documento'] = match.group(1)
+                break
         
         # Extraer datos estructurados de Form Recognizer
         if form_result and 'analyzeResult' in form_result:
             docs = form_result['analyzeResult'].get('documents', [])
-            if docs:
-                fields = docs[0].get('fields', {})
+            if docs and 'fields' in docs[0]:
+                fields = docs[0]['fields']
                 
-                if 'VendorName' in fields and 'content' in fields['VendorName']:
-                    data['business_name'] = fields['VendorName']['content']
+                # Mapear campos
+                field_mapping = {
+                    'VendorName': 'razon_social',
+                    'InvoiceDate': 'fecha',
+                    'InvoiceTotal': 'total',
+                    'SubTotal': 'subtotal',
+                    'TotalTax': 'igv'
+                }
                 
-                if 'InvoiceTotal' in fields and 'content' in fields['InvoiceTotal']:
-                    data['total'] = fields['InvoiceTotal']['content']
-                
-                if 'InvoiceDate' in fields and 'content' in fields['InvoiceDate']:
-                    data['date'] = fields['InvoiceDate']['content']
+                for azure_field, data_key in field_mapping.items():
+                    if azure_field in fields and 'content' in fields[azure_field]:
+                        data[data_key] = fields[azure_field]['content']
         
         return data
 
 def main():
-    # Header minimalista
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    
+    # Header
     st.markdown("""
-    <div class="header-title">🇵🇪 AI Invoice Reader</div>
-    <div class="header-subtitle">Analiza boletas y facturas peruanas con inteligencia artificial</div>
+    <div class="header">
+        <div class="title">🇵🇪 Lector de Facturas Perú</div>
+        <div class="subtitle">Extrae datos de boletas y facturas usando Azure AI</div>
+    </div>
     """, unsafe_allow_html=True)
     
     # Verificar credenciales
     if not all([FORM_RECOGNIZER_ENDPOINT, FORM_RECOGNIZER_KEY, 
                 COMPUTER_VISION_ENDPOINT, COMPUTER_VISION_KEY]):
-        st.error("🔑 Configura las credenciales de Azure en Streamlit Secrets")
+        st.error("⚠️ Faltan credenciales de Azure. Configura los secrets.")
         st.stop()
     
-    reader = PeruInvoiceReader()
+    # Inicializar lector
+    reader = InvoiceReader()
     
-    # Zona de upload minimalista
-    st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
+    # Upload de archivo
+    st.markdown("### 📄 Subir Documento")
     uploaded_file = st.file_uploader(
-        "",
+        "Selecciona una imagen de tu boleta o factura",
         type=['png', 'jpg', 'jpeg'],
-        help="Solo imágenes JPG o PNG (sin PDF por ahora)",
-        label_visibility="collapsed"
+        help="Formatos soportados: PNG, JPG, JPEG"
     )
-    
-    if not uploaded_file:
-        st.markdown("""
-        <div style="text-align: center; color: #7f8c8d;">
-            <h3>📱 Sube tu documento</h3>
-            <p>Arrastra una imagen o haz clic para seleccionar</p>
-            <small>Solo JPG, PNG • Máx. 4MB</small>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
     
     if uploaded_file:
         # Mostrar imagen
+        image = Image.open(uploaded_file)
+        
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            image = Image.open(uploaded_file)
-            st.image(image, caption="", use_container_width=True)
+            st.image(image, caption="Documento cargado")
+        
+        # Información del archivo
+        file_size = len(uploaded_file.read())
+        uploaded_file.seek(0)  # Reset
+        
+        st.info(f"📊 Archivo: {uploaded_file.name} ({file_size:,} bytes)")
         
         # Botón de análisis
-        if st.button("🚀 Analizar Documento"):
+        if st.button("🚀 Analizar Documento", type="primary"):
             
-            # Leer archivo directamente
-            file_bytes = uploaded_file.read()
-            
-            # Validar tamaño
-            if len(file_bytes) > 4 * 1024 * 1024:
-                st.error("❌ Archivo muy grande. Máximo 4MB.")
+            if file_size > 4 * 1024 * 1024:  # 4MB
+                st.error("❌ Archivo muy grande. Máximo 4MB permitido.")
                 return
             
-            st.success(f"✅ Archivo listo: {len(file_bytes)} bytes")
+            # Leer archivo
+            file_bytes = uploaded_file.read()
             
-            with st.spinner("🤖 Analizando..."):
-                # Procesar con ambos servicios
-                form_result = reader.analyze_with_form_recognizer(file_bytes)
-                ocr_result = reader.analyze_with_computer_vision(file_bytes)
+            with st.spinner("Analizando documento..."):
                 
+                # Procesar con ambos servicios
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**🔍 Form Recognizer**")
+                    form_result = reader.analyze_with_form_recognizer(file_bytes)
+                
+                with col2:
+                    st.markdown("**👁️ Computer Vision**")
+                    ocr_result = reader.analyze_with_computer_vision(file_bytes)
+                
+                # Verificar si al menos uno funcionó
                 if form_result or ocr_result:
+                    
                     # Extraer datos
-                    invoice_data = reader.extract_data(form_result, ocr_result)
+                    data = reader.extract_data(form_result, ocr_result)
                     
                     # Mostrar resultados
-                    st.markdown('<div class="success-badge">✅ Análisis completado</div>', 
-                              unsafe_allow_html=True)
+                    st.markdown("---")
+                    st.markdown("### 📋 Resultados")
                     
-                    st.markdown(f'<div class="document-type">{invoice_data["document_type"]}</div>', 
-                              unsafe_allow_html=True)
+                    # Tipo de documento
+                    st.markdown(f"**Tipo:** {data['tipo_documento']}")
                     
-                    # Métricas principales
+                    # Métricas principales en columnas
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
                         st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-value">{invoice_data['total'] or 'N/A'}</div>
+                        <div class="metric">
+                            <div class="metric-value">{data['total'] or 'N/A'}</div>
                             <div class="metric-label">Total</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
                     with col2:
                         st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-value">{invoice_data['ruc'] or 'N/A'}</div>
+                        <div class="metric">
+                            <div class="metric-value">{data['ruc'] or 'N/A'}</div>
                             <div class="metric-label">RUC</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
                     with col3:
                         st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-value">{invoice_data['invoice_number'] or 'N/A'}</div>
-                            <div class="metric-label">N° Doc</div>
+                        <div class="metric">
+                            <div class="metric-value">{data['numero_documento'] or 'N/A'}</div>
+                            <div class="metric-label">N° Documento</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    # Detalles
-                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    # Detalles adicionales
+                    st.markdown("### 📊 Detalles")
                     
-                    if invoice_data['business_name']:
-                        st.subheader("🏢 Empresa")
-                        st.write(f"**{invoice_data['business_name']}**")
+                    details_col1, details_col2 = st.columns(2)
                     
-                    if invoice_data['date']:
-                        st.subheader("📅 Fecha")
-                        st.write(invoice_data['date'])
+                    with details_col1:
+                        if data['razon_social']:
+                            st.markdown(f"**Razón Social:** {data['razon_social']}")
+                        if data['fecha']:
+                            st.markdown(f"**Fecha:** {data['fecha']}")
                     
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    with details_col2:
+                        if data['subtotal']:
+                            st.markdown(f"**Subtotal:** {data['subtotal']}")
+                        if data['igv']:
+                            st.markdown(f"**IGV:** {data['igv']}")
                     
-                    # Ver datos técnicos
+                    # Datos técnicos (expandible)
                     with st.expander("🔍 Ver datos técnicos"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.subheader("Form Recognizer")
+                        
+                        tab1, tab2 = st.tabs(["Form Recognizer", "Computer Vision"])
+                        
+                        with tab1:
                             if form_result:
                                 st.json(form_result)
                             else:
-                                st.info("Sin datos")
+                                st.info("No hay datos de Form Recognizer")
                         
-                        with col2:
-                            st.subheader("Computer Vision")
+                        with tab2:
                             if ocr_result:
                                 st.json(ocr_result)
                             else:
-                                st.info("Sin datos")
+                                st.info("No hay datos de Computer Vision")
                 
                 else:
-                    st.error("❌ No se pudo procesar el documento")
+                    st.error("❌ No se pudo procesar el documento. Verifica que sea una imagen clara.")
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        # Instrucciones cuando no hay archivo
+        st.markdown("""
+        ### 📋 Instrucciones
+        
+        1. **Sube una imagen** de tu boleta o factura peruana
+        2. **Formatos aceptados:** JPG, PNG  
+        3. **Tamaño máximo:** 4MB
+        4. **Calidad recomendada:** Imagen clara y legible
+        
+        El sistema extraerá automáticamente:
+        - RUC del emisor
+        - Número de documento  
+        - Totales e impuestos
+        - Fecha de emisión
+        - Razón social
+        """)
     
-    # Footer minimalista
+    # Footer
     st.markdown("---")
     st.markdown("""
-    <div style="text-align: center; color: #7f8c8d; font-size: 0.9rem;">
+    <div style="text-align: center; color: #7f8c8d; padding: 1rem;">
         Powered by <strong>Azure Form Recognizer</strong> + <strong>Computer Vision</strong><br>
         Especializado para documentos tributarios del Perú 🇵🇪
     </div>
