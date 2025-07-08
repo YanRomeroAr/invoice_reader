@@ -149,67 +149,116 @@ class PeruInvoiceReader:
     def analyze_with_form_recognizer(self, image_data):
         """Analizar documento con Form Recognizer"""
         try:
-            analyze_url = f"{self.form_recognizer_endpoint}/formrecognizer/documentModels/prebuilt-invoice:analyze"
+            # Asegurar que el endpoint termine con /
+            endpoint = self.form_recognizer_endpoint.rstrip('/') + '/'
+            analyze_url = f"{endpoint}formrecognizer/documentModels/prebuilt-invoice:analyze"
             
             headers = {
                 'Ocp-Apim-Subscription-Key': self.form_recognizer_key,
                 'Content-Type': 'application/octet-stream'
             }
             
+            params = {'api-version': '2023-07-31'}
+            
             response = requests.post(
                 analyze_url,
                 headers=headers,
                 data=image_data,
-                params={'api-version': '2023-07-31'}
+                params=params,
+                timeout=30
             )
+            
+            st.info(f"Form Recognizer Status: {response.status_code}")
             
             if response.status_code == 202:
                 operation_location = response.headers.get('Operation-Location')
-                return self._wait_for_results(operation_location, self.form_recognizer_key)
-            
-            return None
+                if operation_location:
+                    return self._wait_for_results(operation_location, self.form_recognizer_key)
+                else:
+                    st.error("No se recibió Operation-Location")
+                    return None
+            else:
+                st.error(f"Error Form Recognizer: {response.status_code} - {response.text}")
+                return None
                 
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Error Form Recognizer: {str(e)}")
             return None
     
     def analyze_with_computer_vision(self, image_data):
         """Extraer texto con Computer Vision OCR"""
         try:
-            ocr_url = f"{self.computer_vision_endpoint}/vision/v3.2/read/analyze"
+            # Asegurar que el endpoint termine con /
+            endpoint = self.computer_vision_endpoint.rstrip('/') + '/'
+            ocr_url = f"{endpoint}vision/v3.2/read/analyze"
             
             headers = {
                 'Ocp-Apim-Subscription-Key': self.computer_vision_key,
                 'Content-Type': 'application/octet-stream'
             }
             
-            response = requests.post(ocr_url, headers=headers, data=image_data)
+            response = requests.post(
+                ocr_url, 
+                headers=headers, 
+                data=image_data,
+                timeout=30
+            )
+            
+            st.info(f"Computer Vision Status: {response.status_code}")
             
             if response.status_code == 202:
                 operation_location = response.headers.get('Operation-Location')
-                return self._wait_for_results(operation_location, self.computer_vision_key)
-            
-            return None
+                if operation_location:
+                    return self._wait_for_results(operation_location, self.computer_vision_key)
+                else:
+                    st.error("No se recibió Operation-Location para Computer Vision")
+                    return None
+            else:
+                st.error(f"Error Computer Vision: {response.status_code} - {response.text}")
+                return None
                 
         except Exception as e:
-            st.error(f"Error OCR: {str(e)}")
+            st.error(f"Error Computer Vision: {str(e)}")
             return None
     
     def _wait_for_results(self, operation_location, api_key):
         """Esperar resultados del análisis"""
         headers = {'Ocp-Apim-Subscription-Key': api_key}
         
-        for _ in range(30):
-            response = requests.get(operation_location, headers=headers)
-            result = response.json()
-            
-            if result.get('status') == 'succeeded':
-                return result
-            elif result.get('status') == 'failed':
-                return None
-            
-            time.sleep(1)
+        # Mostrar progreso
+        progress_bar = st.progress(0)
         
+        max_attempts = 30
+        for attempt in range(max_attempts):
+            try:
+                progress = (attempt + 1) / max_attempts
+                progress_bar.progress(progress)
+                
+                response = requests.get(operation_location, headers=headers, timeout=10)
+                result = response.json()
+                
+                status = result.get('status', 'unknown')
+                st.info(f"Estado: {status} (intento {attempt + 1}/{max_attempts})")
+                
+                if status == 'succeeded':
+                    progress_bar.progress(1.0)
+                    st.success("✅ Análisis completado")
+                    return result
+                elif status == 'failed':
+                    st.error(f"❌ Análisis falló: {result.get('error', 'Error desconocido')}")
+                    return None
+                elif status in ['running', 'notStarted']:
+                    time.sleep(2)
+                else:
+                    st.warning(f"Estado desconocido: {status}")
+                    time.sleep(2)
+                    
+            except Exception as e:
+                st.error(f"Error esperando resultados: {str(e)}")
+                time.sleep(2)
+        
+        progress_bar.progress(1.0)
+        st.error("⏱️ Timeout: El análisis tomó demasiado tiempo")
         return None
     
     def extract_peru_invoice_data(self, form_result, ocr_result):
@@ -344,7 +393,7 @@ def main():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             image = Image.open(uploaded_file)
-            st.image(image, caption="", use_column_width=True)
+            st.image(image, caption="", use_container_width=True)
         
         # Botón de análisis
         if st.button("🚀 Analizar Documento"):
