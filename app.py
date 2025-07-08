@@ -12,16 +12,39 @@ st.set_page_config(
     layout="centered"
 )
 
-# CSS super limpio - fondo blanco y texto oscuro
+# CSS super limpio - fondo blanco y TODAS las letras negras
 st.markdown("""
 <style>
+    /* Forzar todos los textos a negro */
+    * {
+        color: #000000 !important;
+    }
+    
     .main {
-        background-color: #ffffff;
-        color: #2c2c2c;
+        background-color: #ffffff !important;
+        color: #000000 !important;
     }
     
     .stApp {
-        background-color: #ffffff;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    /* Todos los elementos de texto */
+    .stMarkdown, .stMarkdown *, p, div, span, h1, h2, h3, h4, h5, h6 {
+        color: #000000 !important;
+        background-color: transparent !important;
+    }
+    
+    /* Elementos específicos de Streamlit */
+    .stSelectbox label, .stFileUploader label, .stButton, .stProgress {
+        color: #000000 !important;
+    }
+    
+    /* Texto en inputs y labels */
+    label, .stTextInput label, .stFileUploader label {
+        color: #000000 !important;
+        font-weight: 600 !important;
     }
     
     .header {
@@ -29,26 +52,29 @@ st.markdown("""
         padding: 2rem 0;
         border-bottom: 2px solid #e8e8e8;
         margin-bottom: 2rem;
+        background-color: #ffffff !important;
     }
     
     .title {
         font-size: 2.8rem;
-        color: #1a1a1a;
+        color: #000000 !important;
         margin-bottom: 0.3rem;
-        font-weight: 600;
+        font-weight: 700;
     }
     
     .subtitle {
-        color: #4a4a4a;
+        color: #000000 !important;
         font-size: 1.2rem;
         margin-bottom: 0.5rem;
+        font-weight: 500;
     }
     
     .project-title {
-        color: #666666;
+        color: #000000 !important;
         font-size: 0.95rem;
         font-style: italic;
         margin-bottom: 1rem;
+        font-weight: 600;
     }
     
     .result-box {
@@ -73,34 +99,34 @@ st.markdown("""
     .metric-value {
         font-size: 1.4rem;
         font-weight: bold;
-        color: #1a1a1a;
+        color: #000000 !important;
         margin-bottom: 0.3rem;
     }
     
     .metric-label {
-        color: #666666;
+        color: #000000 !important;
         font-size: 0.9rem;
-        font-weight: 500;
+        font-weight: 600;
     }
     
     .success {
         background-color: #e8f5e8;
-        color: #2d5016;
+        color: #000000 !important;
         padding: 0.8rem 1.2rem;
         border-radius: 6px;
         border: 1px solid #c3e6c3;
         margin: 1rem 0;
-        font-weight: 500;
+        font-weight: 600;
     }
     
     .error {
         background-color: #fde8e8;
-        color: #721c24;
+        color: #000000 !important;
         padding: 0.8rem 1.2rem;
         border-radius: 6px;
         border: 1px solid #f5c6cb;
         margin: 1rem 0;
-        font-weight: 500;
+        font-weight: 600;
     }
     
     .info-section {
@@ -111,9 +137,13 @@ st.markdown("""
         border-radius: 0 6px 6px 0;
     }
     
+    .info-section * {
+        color: #000000 !important;
+    }
+    
     .footer {
         text-align: center;
-        color: #555555;
+        color: #000000 !important;
         padding: 2rem 1rem;
         border-top: 1px solid #e8e8e8;
         margin-top: 3rem;
@@ -121,14 +151,14 @@ st.markdown("""
     }
     
     .creator {
-        font-weight: 600;
-        color: #333333;
+        font-weight: 700;
+        color: #000000 !important;
         font-size: 1.1rem;
     }
     
     .stButton > button {
         background-color: #007bff;
-        color: white;
+        color: #ffffff !important;
         border: none;
         border-radius: 8px;
         padding: 0.7rem 2rem;
@@ -140,8 +170,47 @@ st.markdown("""
     
     .stButton > button:hover {
         background-color: #0056b3;
+        color: #ffffff !important;
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    }
+    
+    /* Progress bars y otros elementos */
+    .stProgress .stProgress-bar {
+        background-color: #007bff !important;
+    }
+    
+    /* Spinners y loading */
+    .stSpinner {
+        color: #000000 !important;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    /* JSON viewer */
+    .stJson {
+        background-color: #f8f9fa !important;
+        color: #000000 !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
+    
+    /* Info, success, error messages */
+    .stAlert {
+        color: #000000 !important;
+    }
+    
+    /* Cualquier texto que se escape */
+    .css-1v0mbdj, .css-1ekf893, .css-16huue1, .css-1d391kg {
+        color: #000000 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -448,27 +517,39 @@ def main():
     else:
         # Instrucciones cuando no hay archivo
         st.markdown("""
-        ### 📋 Instrucciones
-        
-        1. **Sube una imagen** de tu boleta o factura peruana
-        2. **Formatos aceptados:** JPG, PNG  
-        3. **Tamaño máximo:** 4MB
-        4. **Calidad recomendada:** Imagen clara y legible
-        
-        El sistema extraerá automáticamente:
-        - RUC del emisor
-        - Número de documento  
-        - Totales e impuestos
-        - Fecha de emisión
-        - Razón social
-        """)
+        <div class="info-section">
+            <h3>📋 Instrucciones de Uso</h3>
+            
+            <p><strong>1. Sube una imagen</strong> de tu boleta o factura peruana</p>
+            <p><strong>2. Formatos aceptados:</strong> JPG, PNG</p>
+            <p><strong>3. Tamaño máximo:</strong> 4MB</p>
+            <p><strong>4. Calidad recomendada:</strong> Imagen clara y legible</p>
+            
+            <h4>🎯 El sistema extraerá automáticamente:</h4>
+            <ul>
+                <li>RUC del emisor</li>
+                <li>Número de documento</li>
+                <li>Totales e impuestos (IGV)</li>
+                <li>Fecha de emisión</li>
+                <li>Razón social</li>
+                <li>Tipo de documento (Boleta/Factura)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Footer
-    st.markdown("---")
     st.markdown("""
-    <div style="text-align: center; color: #7f8c8d; padding: 1rem;">
-        Powered by <strong>Azure Form Recognizer</strong> + <strong>Computer Vision</strong><br>
-        Especializado para documentos tributarios del Perú 🇵🇪
+    <div class="footer">
+        <div style="margin-bottom: 1rem;">
+            <strong>Tecnologías utilizadas:</strong><br>
+            Azure Form Recognizer • Azure Computer Vision • Streamlit • Python
+        </div>
+        <div style="margin-bottom: 0.5rem;">
+            Especializado para documentos tributarios del Perú 🇵🇪
+        </div>
+        <div class="creator">
+            Creado por Yan Romero
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
