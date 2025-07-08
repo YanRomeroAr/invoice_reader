@@ -145,6 +145,54 @@ class PeruInvoiceReader:
         self.form_recognizer_key = FORM_RECOGNIZER_KEY
         self.computer_vision_endpoint = COMPUTER_VISION_ENDPOINT
         self.computer_vision_key = COMPUTER_VISION_KEY
+    
+    def prepare_image_data(self, uploaded_file):
+        """Preparar y validar datos de imagen"""
+        try:
+            # Leer archivo
+            file_bytes = uploaded_file.read()
+            
+            # Validar tamaño (máximo 4MB para Azure)
+            if len(file_bytes) > 4 * 1024 * 1024:
+                st.error("❌ Archivo muy grande. Máximo 4MB permitido.")
+                return None
+            
+            # Si es PDF, solo usar primeros bytes
+            if uploaded_file.type == "application/pdf":
+                return file_bytes
+            
+            # Si es imagen, convertir a formato compatible
+            if uploaded_file.type.startswith('image'):
+                try:
+                    # Abrir imagen con PIL
+                    image = Image.open(io.BytesIO(file_bytes))
+                    
+                    # Convertir a RGB si es necesario
+                    if image.mode in ('RGBA', 'P', 'L'):
+                        image = image.convert('RGB')
+                    
+                    # Redimensionar si es muy grande
+                    max_size = (1920, 1920)
+                    if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
+                        try:
+                            image.thumbnail(max_size, Image.LANCZOS)
+                        except:
+                            image.thumbnail(max_size)
+                    
+                    # Convertir a JPEG de calidad alta
+                    img_byte_arr = io.BytesIO()
+                    image.save(img_byte_arr, format='JPEG', quality=95, optimize=True)
+                    return img_byte_arr.getvalue()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error procesando imagen: {str(e)}")
+                    return None
+            
+            return file_bytes
+            
+        except Exception as e:
+            st.error(f"❌ Error preparando archivo: {str(e)}")
+            return None
         """Preparar y validar datos de imagen"""
         try:
             # Leer archivo
