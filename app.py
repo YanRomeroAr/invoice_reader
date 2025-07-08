@@ -7,84 +7,141 @@ import re
 
 # Configuración
 st.set_page_config(
-    page_title="Lector de Facturas Perú",
-    page_icon="🇵🇪",
+    page_title="Trabajo IA Computer Vision",
+    page_icon="🤖",
     layout="centered"
 )
 
-# CSS super limpio - fondo blanco
+# CSS super limpio - fondo blanco y texto oscuro
 st.markdown("""
 <style>
     .main {
-        background-color: white;
-        color: #333333;
+        background-color: #ffffff;
+        color: #2c2c2c;
     }
     
     .stApp {
-        background-color: white;
+        background-color: #ffffff;
     }
     
     .header {
         text-align: center;
         padding: 2rem 0;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: 2px solid #e8e8e8;
         margin-bottom: 2rem;
     }
     
     .title {
-        font-size: 2.5rem;
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
+        font-size: 2.8rem;
+        color: #1a1a1a;
+        margin-bottom: 0.3rem;
+        font-weight: 600;
     }
     
     .subtitle {
-        color: #7f8c8d;
-        font-size: 1.1rem;
+        color: #4a4a4a;
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .project-title {
+        color: #666666;
+        font-size: 0.95rem;
+        font-style: italic;
+        margin-bottom: 1rem;
     }
     
     .result-box {
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-        background-color: #f9f9f9;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        background-color: #fafafa;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .metric {
-        background-color: #f1f1f1;
-        border-radius: 6px;
-        padding: 0.8rem;
+        background-color: #f5f5f5;
+        border: 1px solid #dadada;
+        border-radius: 8px;
+        padding: 1rem;
         margin: 0.5rem 0;
         text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     
     .metric-value {
-        font-size: 1.3rem;
+        font-size: 1.4rem;
         font-weight: bold;
-        color: #2c3e50;
+        color: #1a1a1a;
+        margin-bottom: 0.3rem;
     }
     
     .metric-label {
-        color: #7f8c8d;
+        color: #666666;
         font-size: 0.9rem;
+        font-weight: 500;
     }
     
     .success {
-        background-color: #d4edda;
-        color: #155724;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        border: 1px solid #c3e6cb;
+        background-color: #e8f5e8;
+        color: #2d5016;
+        padding: 0.8rem 1.2rem;
+        border-radius: 6px;
+        border: 1px solid #c3e6c3;
         margin: 1rem 0;
+        font-weight: 500;
     }
     
     .error {
-        background-color: #f8d7da;
+        background-color: #fde8e8;
         color: #721c24;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
+        padding: 0.8rem 1.2rem;
+        border-radius: 6px;
         border: 1px solid #f5c6cb;
         margin: 1rem 0;
+        font-weight: 500;
+    }
+    
+    .info-section {
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 1rem 1.5rem;
+        margin: 1rem 0;
+        border-radius: 0 6px 6px 0;
+    }
+    
+    .footer {
+        text-align: center;
+        color: #555555;
+        padding: 2rem 1rem;
+        border-top: 1px solid #e8e8e8;
+        margin-top: 3rem;
+        background-color: #fafafa;
+    }
+    
+    .creator {
+        font-weight: 600;
+        color: #333333;
+        font-size: 1.1rem;
+    }
+    
+    .stButton > button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.7rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+    }
+    
+    .stButton > button:hover {
+        background-color: #0056b3;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -251,8 +308,9 @@ def main():
     # Header
     st.markdown("""
     <div class="header">
-        <div class="title">🇵🇪 Lector de Facturas Perú</div>
-        <div class="subtitle">Extrae datos de boletas y facturas usando Azure AI</div>
+        <div class="project-title">Trabajo IA Computer Vision</div>
+        <div class="title">🤖 Lector de Facturas Perú</div>
+        <div class="subtitle">Sistema de extracción de datos usando Azure AI</div>
     </div>
     """, unsafe_allow_html=True)
     
